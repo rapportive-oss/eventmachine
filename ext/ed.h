@@ -74,6 +74,7 @@ class EventableDescriptor: public Bindable_t
 
 		#ifdef WITH_SSL
 		virtual X509 *GetPeerCert() {return NULL;}
+		virtual const char *GetServerNameIndication(){return NULL;}
 		#endif
 
 		virtual uint64_t GetCommInactivityTimeout() {return 0;}
@@ -201,6 +202,7 @@ class ConnectionDescriptor: public EventableDescriptor
 		virtual X509 *GetPeerCert();
 		virtual bool VerifySslPeer(const char*);
 		virtual void AcceptSslPeer();
+		virtual const char *GetServerNameIndication();
 		#endif
 
 		void SetServerMode() {bIsServer = true;}
@@ -239,6 +241,7 @@ class ConnectionDescriptor: public EventableDescriptor
 		SslBox_t *SslBox;
 		std::string CertChainFilename;
 		std::string PrivateKeyFilename;
+		std::string ServerNameIndication;
 		bool bHandshakeSignaled;
 		bool bSslVerifyPeer;
                 int bSslVersion;

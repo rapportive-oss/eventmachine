@@ -477,6 +477,21 @@ extern "C" X509 *evma_get_peer_cert (const unsigned long binding)
 }
 #endif
 
+/*******************************
+evma_get_server_name_indication
+*******************************/
+
+#ifdef WITH_SSL
+extern "C" const char *evma_get_server_name_indication (const unsigned long binding)
+{
+	ensure_eventmachine("evma_get_server_name_indication");
+	EventableDescriptor *ed = dynamic_cast <EventableDescriptor*> (Bindable_t::GetObject (binding));
+	if (ed)
+		return ed->GetServerNameIndication();
+	return NULL;
+}
+#endif
+
 /********************
 evma_accept_ssl_peer
 ********************/

@@ -567,6 +567,16 @@ module EventMachine
       EventMachine::get_peername @signature
     end
 
+    # SNI (server name indication) is a TLS extension that lets the client
+    # tell the server which hostname it is connecting to.
+    #
+    # This method returns nil if the client does not support SNI.
+    #
+    # @return [String, nil]
+    def get_server_name_indication
+      EventMachine::get_server_name_indication @signature
+    end
+
     # Used with stream-connections to obtain the identity
     # of the local side of the connection. If a local name is available, this method
     # returns a sockaddr structure. The method returns nil if no local name is available.

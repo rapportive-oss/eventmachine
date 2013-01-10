@@ -453,6 +453,20 @@ X509 *SslBox_t::GetPeerCert()
 	return cert;
 }
 
+/**********************************
+SsslBox_t::GetServerNameIndication
+***********************************/
+
+const char *SslBox_t::GetServerNameIndication()
+{
+	const char *servername = NULL;
+
+	if (pSSL)
+		servername = SSL_get_servername(pSSL, TLSEXT_NAMETYPE_host_name);
+
+	return servername;
+}
+
 
 /******************
 ssl_verify_wrapper

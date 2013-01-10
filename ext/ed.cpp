@@ -1188,6 +1188,20 @@ X509 *ConnectionDescriptor::GetPeerCert()
 #endif
 
 
+/*********************************************
+ConnectionDescriptor::GetServerNameIndication
+********************************************/
+
+#ifdef WITH_SSL
+const char *ConnectionDescriptor::GetServerNameIndication()
+{
+	if (!SslBox)
+		throw std::runtime_error ("SSL/TLS not running on this connection");
+	return SslBox->GetServerNameIndication();
+}
+#endif
+
+
 /***********************************
 ConnectionDescriptor::VerifySslPeer
 ***********************************/
