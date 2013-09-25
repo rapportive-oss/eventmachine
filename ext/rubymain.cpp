@@ -318,6 +318,16 @@ static VALUE t_set_tls_parms (VALUE self, VALUE signature, VALUE privkeyfile, VA
 	return Qnil;
 }
 
+/**************
+t_set_tls_host
+**************/
+
+static VALUE t_set_tls_host (VALUE self, VALUE signature, VALUE hostname, VALUE privkeyfile, VALUE certchainfile)
+{
+	evma_set_tls_host (NUM2ULONG(signature), StringValuePtr(hostname), StringValuePtr(privkeyfile), StringValuePtr(certchainfile));
+	return Qnil;
+}
+
 /***************
 t_get_peer_cert
 ***************/
@@ -1233,6 +1243,7 @@ extern "C" void Init_rubyeventmachine()
 	rb_define_module_function (EmModule, "stop_tcp_server", (VALUE(*)(...))t_stop_server, 1);
 	rb_define_module_function (EmModule, "start_unix_server", (VALUE(*)(...))t_start_unix_server, 1);
 	rb_define_module_function (EmModule, "set_tls_parms", (VALUE(*)(...))t_set_tls_parms, 6);
+	rb_define_module_function (EmModule, "set_tls_host", (VALUE(*)(...))t_set_tls_host, 4);
 	rb_define_module_function (EmModule, "start_tls", (VALUE(*)(...))t_start_tls, 1);
 	rb_define_module_function (EmModule, "get_peer_cert", (VALUE(*)(...))t_get_peer_cert, 1);
 	rb_define_module_function (EmModule, "get_server_name_indication", (VALUE(*)(...))t_get_server_name_indication, 1);

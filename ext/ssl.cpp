@@ -270,6 +270,83 @@ SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &cer
 		SSL_connect (pSSL);
 }
 
+// OpenSSL callback function used to switch the SSL context that should be used
+// based on the hostname supplied by an SNI-capable client.
+static int ssl_callback_ServerNameIndication(SSL *ssl, int *ad, void *sslbox)
+{
+	const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+	assert(sslbox);
+
+	return ((SslBox_t *) sslbox)->UpdateContextForHostname(hostname);
+}
+
+
+int SslBox_t::UpdateContextForHostname(const char *hostname)
+{
+	try {
+		cout << "Updating SSL context for hostname: " << hostname << "\n";
+		cout << "Certificate configs are: " << Contexts.size() << "\n";
+		cout << "Certificate config is: " << Contexts.at(hostname) << "\n";
+
+		SSL_set_SSL_CTX(pSSL, Contexts.at(hostname)->pCtx);
+		return SSL_TLSEXT_ERR_OK;
+
+	} catch (std::out_of_range e) {
+		cout << "No config for host " << hostname << ", guess we should fallback to something or raise an error?\n";
+		return SSL_TLSEXT_ERR_ALERT_WARNING;
+	}
+}
+
+SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > hostcontexts, bool verify_peer, const unsigned long binding):
+	bIsServer (is_server),
+	bHandshakeCompleted (false),
+	bVerifyPeer (verify_peer),
+	bSslVersion (NULL),
+	pSSL (NULL),
+	pbioRead (NULL),
+	pbioWrite (NULL)
+{
+	SSL_CTX *first_context = NULL;
+
+	for (std::map<string, std::map<string, string> >::iterator it = hostcontexts.begin(); it != hostcontexts.end(); ++it) {
+		std::map<string, string> config = it->second;
+		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"],
+		                                         0 /*TODO: make this an arg*/, config["cipherlist"]);
+		assert(context);
+		if (!first_context) {
+			first_context = context->pCtx;
+		}
+		cout << "Setting Contexts value for key=" << it->first << "\n";
+		Contexts.insert(std::pair<string, SslContext_t *>(it->first, context));
+		cout << "Processed data, setting up callback\n";
+
+		// Have our callback get notified of which certificate context it should use
+		SSL_CTX_set_tlsext_servername_callback(context->pCtx, ssl_callback_ServerNameIndication);
+		SSL_CTX_set_tlsext_servername_arg(context->pCtx, this);
+	}
+
+	cout << "Got past hosts parsing\n";
+	// TODO: if we have no contexts, that's fatal!
+
+	pbioRead = BIO_new (BIO_s_mem());
+	assert (pbioRead);
+
+	pbioWrite = BIO_new (BIO_s_mem());
+	assert (pbioWrite);
+
+	pSSL = SSL_new (first_context);
+	assert (pSSL);
+	SSL_set_bio (pSSL, pbioRead, pbioWrite);
+
+	// Store a pointer to the binding signature in the SSL object so we can retrieve it later
+	SSL_set_ex_data(pSSL, 0, (void*) binding);
+
+	if (bVerifyPeer)
+		SSL_set_verify(pSSL, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, ssl_verify_wrapper);
+
+	if (!bIsServer)
+		SSL_connect (pSSL);
+}
 
 
 /*******************
@@ -287,7 +364,14 @@ SslBox_t::~SslBox_t()
 		SSL_free (pSSL);
 	}
 
-	delete Context;
+	if (Contexts.size() > 0) {
+		for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
+			cout << "Deleting context\n";
+			delete it->second;
+		}
+	} else {
+		delete Context;
+	}
 }
 
 

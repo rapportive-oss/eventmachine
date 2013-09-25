@@ -440,7 +440,18 @@ module EventMachine
         else         ; raise "invalid value #{ssl_version.inspect} for :ssl_version"
       end
 
-      EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', verify_peer, ssl_version, cipher_list || '')
+      if args[:hosts] # we're going to use SNI to determine which key/cert to use.
+        # TODO: validate the key & cert files exist
+        puts "Detected :hosts during start_tls, will try to use SNI"
+
+        EventMachine::set_tls_parms(@signature, '', '', verify_peer, ssl_version, cipher_list || '')
+        args[:hosts].each do |hostname, ssl|
+          EventMachine::set_tls_host(@signature, hostname, ssl[:private_key_file], ssl[:cert_chain_file])
+        end
+      else
+        # EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', verify_peer, ssl_version, cipher_list || '')
+      end
+
       EventMachine::start_tls @signature
     end
 

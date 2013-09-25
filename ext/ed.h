@@ -71,6 +71,7 @@ class EventableDescriptor: public Bindable_t
 
 		virtual void StartTls() {}
 		virtual void SetTlsParms (const char *privkey_filename, const char *certchain_filename, bool verify_peer, int ssl_version, const char *cipherlist) {}
+		virtual void SetTlsHost(const char *hostname, const char *privkey_filename, const char *certchain_filename) {}
 
 		#ifdef WITH_SSL
 		virtual X509 *GetPeerCert() {return NULL;}
@@ -197,6 +198,7 @@ class ConnectionDescriptor: public EventableDescriptor
 
 		virtual void StartTls();
 		virtual void SetTlsParms (const char *privkey_filename, const char *certchain_filename, bool verify_peer, int ssl_version, const char *cipherlist);
+		virtual void SetTlsHost(const char *hostname, const char *privkey_filename, const char *certchain_filename);
 
 		#ifdef WITH_SSL
 		virtual X509 *GetPeerCert();
@@ -247,6 +249,8 @@ class ConnectionDescriptor: public EventableDescriptor
                 int bSslVersion;
                 std::string CipherList;
 		bool bSslPeerAccepted;
+
+		std::map<string, std::map<string, string> > HostCertificates;
 		#endif
 
 		#ifdef HAVE_KQUEUE

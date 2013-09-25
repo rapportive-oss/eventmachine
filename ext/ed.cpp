@@ -1139,7 +1139,11 @@ void ConnectionDescriptor::StartTls()
 	if (SslBox)
 		throw std::runtime_error ("SSL/TLS already running on connection");
 
-	SslBox = new SslBox_t (bIsServer, PrivateKeyFilename, CertChainFilename, bSslVerifyPeer, bSslVersion, CipherList, GetBinding());
+	if (HostCertificates.size() > 0) {
+		SslBox = new SslBox_t (bIsServer, HostCertificates, bSslVerifyPeer, GetBinding());
+	} else {
+		SslBox = new SslBox_t (bIsServer, PrivateKeyFilename, CertChainFilename, bSslVerifyPeer, bSslVersion, CipherList, GetBinding());
+	}
 	_DispatchCiphertext();
 	#endif
 
@@ -1173,6 +1177,30 @@ void ConnectionDescriptor::SetTlsParms (const char *privkey_filename, const char
 	#endif
 }
 
+/*********************************
+ConnectionDescriptor::SetTlsHost
+*********************************/
+
+/* TODO: Refactor SetTlsParms so that it creates a default HostCertificate */
+void ConnectionDescriptor::SetTlsHost (const char *hostname, const char *privkey_filename, const char *certchain_filename)
+{
+	#ifdef WITH_SSL
+	if (SslBox)
+		throw std::runtime_error ("call SetTlsHost before calling StartTls");
+
+	std::map<string, string> host_config;
+	host_config.insert(std::pair<string, string>("privkey_filename",   privkey_filename));
+	host_config.insert(std::pair<string, string>("certchain_filename", certchain_filename));
+	host_config.insert(std::pair<string, string>("cipherlist", ""));
+
+	HostCertificates.insert(std::pair<string, std::map<string, string> >(hostname, host_config));
+	cout << "Stored TLS certificate config (in C++) for " << hostname << ": privkey_filename=" << HostCertificates[hostname]["privkey_filename"] << "\n";
+	#endif
+
+	#ifdef WITHOUT_SSL
+	throw std::runtime_error ("Encryption not available on this event-machine");
+	#endif
+}
 
 /*********************************
 ConnectionDescriptor::GetPeerCert
