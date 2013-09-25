@@ -355,7 +355,7 @@ static VALUE t_get_server_name_indication(VALUE self, VALUE signature)
 	VALUE ret = Qnil;
 
 	#ifdef WITH_SSL
-	const char *sni = evma_get_server_name_indication (NUM2LONG (signature));
+	const char *sni = evma_get_server_name_indication (NUM2ULONG (signature));
 	ret = rb_str_new2(sni);
 	#endif
 
