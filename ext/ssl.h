@@ -71,7 +71,7 @@ class SslBox_t
 
 		X509 *GetPeerCert();
 		const char *GetServerNameIndication();
-		int UpdateContextForHostname(const char *hostname);
+		int UpdateContextForHostname(const string &hostname);
 
 		void Shutdown();
 

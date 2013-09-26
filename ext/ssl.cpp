@@ -274,27 +274,38 @@ SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &cer
 // based on the hostname supplied by an SNI-capable client.
 static int ssl_callback_ServerNameIndication(SSL *ssl, int *ad, void *sslbox)
 {
-	const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+	string hostname = string(SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name));
 	assert(sslbox);
 
 	return ((SslBox_t *) sslbox)->UpdateContextForHostname(hostname);
 }
 
 
-int SslBox_t::UpdateContextForHostname(const char *hostname)
+int SslBox_t::UpdateContextForHostname(const string &hostname)
 {
-	try {
-		cout << "Updating SSL context for hostname: " << hostname << "\n";
-		cout << "Certificate configs are: " << Contexts.size() << "\n";
-		cout << "Certificate config is: " << Contexts.at(hostname) << "\n";
+	SslContext_t *matchingContext = NULL;
 
-		SSL_set_SSL_CTX(pSSL, Contexts.at(hostname)->pCtx);
-		return SSL_TLSEXT_ERR_OK;
+	cout << "Updating SSL context for hostname: " << hostname << "\n";
+	cout << "Certificate configs are: " << Contexts.size() << "\n";
 
-	} catch (std::out_of_range e) {
-		cout << "No config for host " << hostname << ", guess we should fallback to something or raise an error?\n";
-		return SSL_TLSEXT_ERR_ALERT_WARNING;
+	// Iterate through the hostname keys we have in Contexts and see which ones
+	// match taking into account a global cert, and prefix matches (to handle wildcard SSL certs)
+	for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
+		string host_match = it->first;
+		if ((host_match.find("*") == 0 && !matchingContext) || hostname.find(host_match) != string::npos) {
+			cout << "Will use certificate matching: [" << host_match << "] to satisfy [" << hostname << "]\n";
+			matchingContext = it->second;
+		}
 	}
+	cout << "Certificate config is: " << matchingContext << "\n";
+
+	if (matchingContext) {
+		SSL_set_SSL_CTX(pSSL, matchingContext->pCtx);
+		return SSL_TLSEXT_ERR_OK;
+	}
+
+	cout << "No config for host " << hostname << ", this is fatal, connection will drop.\n";
+	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
 SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > hostcontexts, bool verify_peer, const unsigned long binding):
