@@ -462,12 +462,12 @@ extern "C" void evma_set_tls_parms (const unsigned long binding, const char *pri
 		ed->SetTlsParms (privatekey_filename, certchain_filename, (verify_peer == 1 ? true : false), ssl_version, cipherlist);
 }
 
-/*****************
-evma_set_tls_host
-*****************/
-extern "C" void evma_set_tls_host (const unsigned long binding, const char *hostname, const char *privatekey_filename, const char *certchain_filename)
+/**********************
+evma_set_tls_host_cert
+**********************/
+extern "C" void evma_set_tls_host_cert (const unsigned long binding, const char *hostname, const char *privatekey_filename, const char *certchain_filename, const char *cipherlist)
 {
-	ensure_eventmachine("evma_set_tls_host");
+	ensure_eventmachine("evma_set_tls_host_cert");
 	EventableDescriptor *ed = dynamic_cast <EventableDescriptor*> (Bindable_t::GetObject (binding));
 	if (ed)
 		ed->SetTlsHost (hostname, privatekey_filename, certchain_filename);

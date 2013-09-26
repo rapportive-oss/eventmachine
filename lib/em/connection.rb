@@ -423,12 +423,6 @@ module EventMachine
     def start_tls args={}
       priv_key, cert_chain, verify_peer, ssl_version, cipher_list = args.values_at(:private_key_file, :cert_chain_file, :verify_peer, :ssl_version, :cipher_list)
 
-      [priv_key, cert_chain].each do |file|
-        next if file.nil? or file.empty?
-        raise FileNotFoundException,
-        "Could not find #{file} for start_tls" unless File.exists? file
-      end
-
       # Backward compatibility with version 1.1.3:
       ssl_version = :TLSv1  if args[:use_tls] and not ssl_version
 
@@ -440,18 +434,19 @@ module EventMachine
         else         ; raise "invalid value #{ssl_version.inspect} for :ssl_version"
       end
 
-      if args[:hosts] # we're going to use SNI to determine which key/cert to use.
-        # TODO: validate the key & cert files exist
-        puts "Detected :hosts during start_tls, will try to use SNI"
+      hosts = args[:hosts] || {}
 
-        EventMachine::set_tls_parms(@signature, '', '', verify_peer, ssl_version, cipher_list || '')
-        args[:hosts].each do |hostname, ssl|
-          EventMachine::set_tls_host(@signature, hostname, ssl[:private_key_file], ssl[:cert_chain_file])
+      # validate that any specified keys and certificates are present
+      ([args] + hosts.values).each do |ssl|
+        [ssl[:private_key_file], ssl[:cert_chain_file]].each do |file|
+          next if file.nil? or file.empty?
+          raise FileNotFoundException,
+          "Could not find #{file} for start_tls" unless File.exists? file
         end
-      else
-        # EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', verify_peer, ssl_version, cipher_list || '')
       end
 
+      EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', verify_peer, ssl_version, cipher_list || '')
+      EventMachine::set_tls_hosts(@signature, hosts) if hosts.size > 0
       EventMachine::start_tls @signature
     end
 

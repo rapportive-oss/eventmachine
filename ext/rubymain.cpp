@@ -318,13 +318,28 @@ static VALUE t_set_tls_parms (VALUE self, VALUE signature, VALUE privkeyfile, VA
 	return Qnil;
 }
 
-/**************
-t_set_tls_host
-**************/
-
-static VALUE t_set_tls_host (VALUE self, VALUE signature, VALUE hostname, VALUE privkeyfile, VALUE certchainfile)
+// cert_properties is itself a ruby hash
+static int iterate_tls_certs(VALUE hostname, VALUE cert_properties, VALUE signature)
 {
-	evma_set_tls_host (NUM2ULONG(signature), StringValuePtr(hostname), StringValuePtr(privkeyfile), StringValuePtr(certchainfile));
+	VALUE private_key_file = rb_hash_aref(cert_properties, ID2SYM(rb_intern("private_key_file")));
+	VALUE cert_chain_file  = rb_hash_aref(cert_properties, ID2SYM(rb_intern("cert_chain_file")));
+	VALUE cipher_list      = rb_hash_aref(cert_properties, ID2SYM(rb_intern("cipher_list")));
+
+	evma_set_tls_host_cert (NUM2ULONG(signature), StringValuePtr(hostname),
+		(private_key_file == Qnil) ? "" : StringValuePtr(private_key_file),
+		(cert_chain_file == Qnil)  ? "" : StringValuePtr(cert_chain_file),
+		(cipher_list == Qnil)      ? "" : StringValuePtr(cipher_list));
+
+	return ST_CONTINUE;
+}
+
+/***************
+t_set_tls_hosts
+***************/
+
+static VALUE t_set_tls_hosts (VALUE self, VALUE signature, VALUE host_certs)
+{
+	rb_hash_foreach(host_certs, (int (*)(...))iterate_tls_certs, signature);
 	return Qnil;
 }
 
@@ -1243,7 +1258,7 @@ extern "C" void Init_rubyeventmachine()
 	rb_define_module_function (EmModule, "stop_tcp_server", (VALUE(*)(...))t_stop_server, 1);
 	rb_define_module_function (EmModule, "start_unix_server", (VALUE(*)(...))t_start_unix_server, 1);
 	rb_define_module_function (EmModule, "set_tls_parms", (VALUE(*)(...))t_set_tls_parms, 6);
-	rb_define_module_function (EmModule, "set_tls_host", (VALUE(*)(...))t_set_tls_host, 4);
+	rb_define_module_function (EmModule, "set_tls_hosts", (VALUE(*)(...))t_set_tls_hosts, 2);
 	rb_define_module_function (EmModule, "start_tls", (VALUE(*)(...))t_start_tls, 1);
 	rb_define_module_function (EmModule, "get_peer_cert", (VALUE(*)(...))t_get_peer_cert, 1);
 	rb_define_module_function (EmModule, "get_server_name_indication", (VALUE(*)(...))t_get_server_name_indication, 1);
