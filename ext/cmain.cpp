@@ -470,7 +470,7 @@ extern "C" void evma_set_tls_host_cert (const unsigned long binding, const char 
 	ensure_eventmachine("evma_set_tls_host_cert");
 	EventableDescriptor *ed = dynamic_cast <EventableDescriptor*> (Bindable_t::GetObject (binding));
 	if (ed)
-		ed->SetTlsHost (hostname, privatekey_filename, certchain_filename);
+		ed->SetTlsHost (hostname, privatekey_filename, certchain_filename, cipherlist);
 }
 
 /******************

@@ -1181,8 +1181,7 @@ void ConnectionDescriptor::SetTlsParms (const char *privkey_filename, const char
 ConnectionDescriptor::SetTlsHost
 *********************************/
 
-/* TODO: Refactor SetTlsParms so that it creates a default HostCertificate */
-void ConnectionDescriptor::SetTlsHost (const char *hostname, const char *privkey_filename, const char *certchain_filename)
+void ConnectionDescriptor::SetTlsHost (const char *hostname, const char *privkey_filename, const char *certchain_filename, const char *cipherlist)
 {
 	#ifdef WITH_SSL
 	if (SslBox)
@@ -1191,7 +1190,7 @@ void ConnectionDescriptor::SetTlsHost (const char *hostname, const char *privkey
 	std::map<string, string> host_config;
 	host_config.insert(std::pair<string, string>("privkey_filename",   privkey_filename));
 	host_config.insert(std::pair<string, string>("certchain_filename", certchain_filename));
-	host_config.insert(std::pair<string, string>("cipherlist", ""));
+	host_config.insert(std::pair<string, string>("cipherlist",         cipherlist));
 
 	HostCertificates.insert(std::pair<string, std::map<string, string> >(hostname, host_config));
 	cout << "Stored TLS certificate config (in C++) for " << hostname << ": privkey_filename=" << HostCertificates[hostname]["privkey_filename"] << "\n";
