@@ -58,7 +58,7 @@ class SslBox_t
 {
 	public:
 		SslBox_t (bool is_server, const string &privkeyfile, const string &certchainfile, bool verify_peer, int ssl_version, const string &cipherlist, const unsigned long binding);
-		SslBox_t (bool is_server, map<string, map<string, string> > hostcontexts, bool verify_peer, const unsigned long binding);
+		SslBox_t (bool is_server, map<string, map<string, string> > hostcontexts, bool verify_peer, int ssl_version, const unsigned long binding);
 		virtual ~SslBox_t();
 
 		int PutPlaintext (const char*, int);

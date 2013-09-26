@@ -1140,7 +1140,7 @@ void ConnectionDescriptor::StartTls()
 		throw std::runtime_error ("SSL/TLS already running on connection");
 
 	if (HostCertificates.size() > 0) {
-		SslBox = new SslBox_t (bIsServer, HostCertificates, bSslVerifyPeer, GetBinding());
+		SslBox = new SslBox_t (bIsServer, HostCertificates, bSslVerifyPeer, bSslVersion, GetBinding());
 	} else {
 		SslBox = new SslBox_t (bIsServer, PrivateKeyFilename, CertChainFilename, bSslVerifyPeer, bSslVersion, CipherList, GetBinding());
 	}

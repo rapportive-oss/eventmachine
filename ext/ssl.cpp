@@ -308,11 +308,11 @@ int SslBox_t::UpdateContextForHostname(const string &hostname)
 	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
-SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > hostcontexts, bool verify_peer, const unsigned long binding):
+SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > hostcontexts, bool verify_peer, int ssl_version, const unsigned long binding):
 	bIsServer (is_server),
 	bHandshakeCompleted (false),
 	bVerifyPeer (verify_peer),
-	bSslVersion (NULL),
+	bSslVersion (ssl_version),
 	pSSL (NULL),
 	pbioRead (NULL),
 	pbioWrite (NULL)
@@ -322,7 +322,7 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 	for (std::map<string, std::map<string, string> >::iterator it = hostcontexts.begin(); it != hostcontexts.end(); ++it) {
 		std::map<string, string> config = it->second;
 		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"],
-		                                         0 /*TODO: make this an arg*/, config["cipherlist"]);
+		                                         bSslVersion, config["cipherlist"]);
 		assert(context);
 		if (!first_context) {
 			first_context = context->pCtx;
