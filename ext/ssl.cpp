@@ -289,7 +289,7 @@ int SslBox_t::UpdateContextForHostname(const string &hostname)
 	cout << "Certificate configs are: " << Contexts.size() << "\n";
 
 	// Iterate through the hostname keys we have in Contexts and see which ones
-	// match taking into account a global cert, and prefix matches (to handle wildcard SSL certs)
+	// match, taking into account a global cert and prefix matches to handle wildcard SSL certs.
 	for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
 		string host_match = it->first;
 		if ((host_match.find("*") == 0 && !matchingContext) || hostname.find(host_match) != string::npos) {
@@ -317,15 +317,15 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 	pbioRead (NULL),
 	pbioWrite (NULL)
 {
-	SSL_CTX *first_context = NULL;
+	SSL_CTX *firstContext = NULL;
 
 	for (std::map<string, std::map<string, string> >::iterator it = hostcontexts.begin(); it != hostcontexts.end(); ++it) {
 		std::map<string, string> config = it->second;
 		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"],
 		                                         bSslVersion, config["cipherlist"]);
 		assert(context);
-		if (!first_context) {
-			first_context = context->pCtx;
+		if (!firstContext) {
+			firstContext = context->pCtx;
 		}
 		cout << "Setting Contexts value for key=" << it->first << "\n";
 		Contexts.insert(std::pair<string, SslContext_t *>(it->first, context));
@@ -336,16 +336,13 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 		SSL_CTX_set_tlsext_servername_arg(context->pCtx, this);
 	}
 
-	cout << "Got past hosts parsing\n";
-	// TODO: if we have no contexts, that's fatal!
-
 	pbioRead = BIO_new (BIO_s_mem());
 	assert (pbioRead);
 
 	pbioWrite = BIO_new (BIO_s_mem());
 	assert (pbioWrite);
 
-	pSSL = SSL_new (first_context);
+	pSSL = SSL_new (firstContext);
 	assert (pSSL);
 	SSL_set_bio (pSSL, pbioRead, pbioWrite);
 
@@ -377,7 +374,6 @@ SslBox_t::~SslBox_t()
 
 	if (Contexts.size() > 0) {
 		for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
-			cout << "Deleting context\n";
 			delete it->second;
 		}
 	} else {
