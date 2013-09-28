@@ -1,8 +1,8 @@
-# EventMachine-LE #
+# EventMachine-LE.rptv #
 
 EventMachine-LE (Live Edition) is a branch of [EventMachine](http://github.com/eventmachine/eventmachine) with fixes and more features.
 
-[![Build Status](https://travis-ci.org/ibc/EventMachine-LE.png?branch=master)](https://travis-ci.org/ibc/EventMachine-LE)
+Furthermore, this is the Rapportive fork of EventMachine-LE!
 
 
 ## What do you mean by "branch"? ##
