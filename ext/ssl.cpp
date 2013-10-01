@@ -274,10 +274,16 @@ SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &cer
 // based on the hostname supplied by an SNI-capable client.
 static int ssl_callback_ServerNameIndication(SSL *ssl, int *ad, void *sslbox)
 {
-	string hostname = string(SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name));
+	const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 	assert(sslbox);
 
-	return ((SslBox_t *) sslbox)->UpdateContextForHostname(hostname);
+	// This means the client does not support SNI or did not supply a hostname.
+	// We'll keep using the certs that have been configured
+	if (!hostname) {
+		return SSL_TLSEXT_ERR_NOACK; // mirroring the behavior of apache2
+	}
+
+	return ((SslBox_t *) sslbox)->UpdateContextForHostname(string(hostname));
 }
 
 
@@ -304,8 +310,8 @@ int SslBox_t::UpdateContextForHostname(const string &hostname)
 		return SSL_TLSEXT_ERR_OK;
 	}
 
-	cout << "No config for host " << hostname << ", this is fatal, connection will drop.\n";
-	return SSL_TLSEXT_ERR_ALERT_FATAL;
+	cout << "No config for host " << hostname << ", using config that was already set.\n";
+	return SSL_TLSEXT_ERR_OK; // use the default configured host
 }
 
 SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > hostcontexts, bool verify_peer, int ssl_version, const unsigned long binding):
@@ -342,6 +348,7 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 	pbioWrite = BIO_new (BIO_s_mem());
 	assert (pbioWrite);
 
+	assert(firstContext);
 	pSSL = SSL_new (firstContext);
 	assert (pSSL);
 	SSL_set_bio (pSSL, pbioRead, pbioWrite);
