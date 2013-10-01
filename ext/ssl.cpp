@@ -270,6 +270,98 @@ SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &cer
 		SSL_connect (pSSL);
 }
 
+// OpenSSL callback function used to switch the SSL context that should be used
+// based on the hostname supplied by an SNI-capable client.
+static int ssl_callback_ServerNameIndication(SSL *ssl, int *ad, void *sslbox)
+{
+	const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+	assert(sslbox);
+
+	// This means the client does not support SNI or did not supply a hostname.
+	// We'll keep using the certs that have been configured
+	if (!hostname) {
+		return SSL_TLSEXT_ERR_NOACK; // mirroring the behavior of apache2
+	}
+
+	return ((SslBox_t *) sslbox)->UpdateContextForHostname(string(hostname));
+}
+
+
+int SslBox_t::UpdateContextForHostname(const string &hostname)
+{
+	SslContext_t *matchingContext = NULL;
+
+	cout << "Updating SSL context for hostname: " << hostname << "\n";
+	cout << "Certificate configs are: " << Contexts.size() << "\n";
+
+	// Iterate through the hostname keys we have in Contexts and see which ones
+	// match, taking into account a global cert and prefix matches to handle wildcard SSL certs.
+	for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
+		string host_match = it->first;
+		if ((host_match.find("*") == 0 && !matchingContext) || hostname.find(host_match) != string::npos) {
+			cout << "Will use certificate matching: [" << host_match << "] to satisfy [" << hostname << "]\n";
+			matchingContext = it->second;
+		}
+	}
+	cout << "Certificate config is: " << matchingContext << "\n";
+
+	if (matchingContext) {
+		SSL_set_SSL_CTX(pSSL, matchingContext->pCtx);
+		return SSL_TLSEXT_ERR_OK;
+	}
+
+	cout << "No config for host " << hostname << ", using config that was already set.\n";
+	return SSL_TLSEXT_ERR_OK; // use the default configured host
+}
+
+SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > hostcontexts, bool verify_peer, int ssl_version, const unsigned long binding):
+	bIsServer (is_server),
+	bHandshakeCompleted (false),
+	bVerifyPeer (verify_peer),
+	bSslVersion (ssl_version),
+	pSSL (NULL),
+	pbioRead (NULL),
+	pbioWrite (NULL)
+{
+	SSL_CTX *firstContext = NULL;
+
+	for (std::map<string, std::map<string, string> >::iterator it = hostcontexts.begin(); it != hostcontexts.end(); ++it) {
+		std::map<string, string> config = it->second;
+		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"],
+		                                         bSslVersion, config["cipherlist"]);
+		assert(context);
+		if (!firstContext) {
+			firstContext = context->pCtx;
+		}
+		cout << "Setting Contexts value for key=" << it->first << "\n";
+		Contexts.insert(std::pair<string, SslContext_t *>(it->first, context));
+		cout << "Processed data, setting up callback\n";
+
+		// Have our callback get notified of which certificate context it should use
+		SSL_CTX_set_tlsext_servername_callback(context->pCtx, ssl_callback_ServerNameIndication);
+		SSL_CTX_set_tlsext_servername_arg(context->pCtx, this);
+	}
+
+	pbioRead = BIO_new (BIO_s_mem());
+	assert (pbioRead);
+
+	pbioWrite = BIO_new (BIO_s_mem());
+	assert (pbioWrite);
+
+	assert(firstContext);
+	pSSL = SSL_new (firstContext);
+	assert (pSSL);
+	SSL_set_bio (pSSL, pbioRead, pbioWrite);
+
+	// Store a pointer to the binding signature in the SSL object so we can retrieve it later
+	SSL_set_ex_data(pSSL, 0, (void*) binding);
+
+	if (bVerifyPeer)
+		SSL_set_verify(pSSL, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, ssl_verify_wrapper);
+
+	if (!bIsServer)
+		SSL_connect (pSSL);
+}
 
 
 /*******************
@@ -287,7 +379,13 @@ SslBox_t::~SslBox_t()
 		SSL_free (pSSL);
 	}
 
-	delete Context;
+	if (Contexts.size() > 0) {
+		for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
+			delete it->second;
+		}
+	} else {
+		delete Context;
+	}
 }
 
 
@@ -451,6 +549,20 @@ X509 *SslBox_t::GetPeerCert()
 		cert = SSL_get_peer_certificate(pSSL);
 
 	return cert;
+}
+
+/**********************************
+SsslBox_t::GetServerNameIndication
+***********************************/
+
+const char *SslBox_t::GetServerNameIndication()
+{
+	const char *servername = NULL;
+
+	if (pSSL)
+		servername = SSL_get_servername(pSSL, TLSEXT_NAMETYPE_host_name);
+
+	return servername;
 }
 
 

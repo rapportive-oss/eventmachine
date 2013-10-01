@@ -423,12 +423,6 @@ module EventMachine
     def start_tls args={}
       priv_key, cert_chain, verify_peer, ssl_version, cipher_list = args.values_at(:private_key_file, :cert_chain_file, :verify_peer, :ssl_version, :cipher_list)
 
-      [priv_key, cert_chain].each do |file|
-        next if file.nil? or file.empty?
-        raise FileNotFoundException,
-        "Could not find #{file} for start_tls" unless File.exists? file
-      end
-
       # Backward compatibility with version 1.1.3:
       ssl_version = :TLSv1  if args[:use_tls] and not ssl_version
 
@@ -440,7 +434,19 @@ module EventMachine
         else         ; raise "invalid value #{ssl_version.inspect} for :ssl_version"
       end
 
+      hosts = args[:hosts] || {}
+
+      # validate that any specified keys and certificates are present
+      ([args] + hosts.values).each do |ssl|
+        [ssl[:private_key_file], ssl[:cert_chain_file]].each do |file|
+          next if file.nil? or file.empty?
+          raise FileNotFoundException,
+          "Could not find #{file} for start_tls" unless File.exists? file
+        end
+      end
+
       EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', verify_peer, ssl_version, cipher_list || '')
+      EventMachine::set_tls_hosts(@signature, hosts) if hosts.size > 0
       EventMachine::start_tls @signature
     end
 
@@ -565,6 +571,16 @@ module EventMachine
     #  end
     def get_peername
       EventMachine::get_peername @signature
+    end
+
+    # SNI (server name indication) is a TLS extension that lets the client
+    # tell the server which hostname it is connecting to.
+    #
+    # This method returns nil if the client does not support SNI.
+    #
+    # @return [String, nil]
+    def get_server_name_indication
+      EventMachine::get_server_name_indication @signature
     end
 
     # Used with stream-connections to obtain the identity

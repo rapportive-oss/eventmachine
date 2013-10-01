@@ -71,9 +71,11 @@ class EventableDescriptor: public Bindable_t
 
 		virtual void StartTls() {}
 		virtual void SetTlsParms (const char *privkey_filename, const char *certchain_filename, bool verify_peer, int ssl_version, const char *cipherlist) {}
+		virtual void SetTlsHost(const char *hostname, const char *privkey_filename, const char *certchain_filename, const char *cipherlist) {}
 
 		#ifdef WITH_SSL
 		virtual X509 *GetPeerCert() {return NULL;}
+		virtual const char *GetServerNameIndication(){return NULL;}
 		#endif
 
 		virtual uint64_t GetCommInactivityTimeout() {return 0;}
@@ -196,11 +198,13 @@ class ConnectionDescriptor: public EventableDescriptor
 
 		virtual void StartTls();
 		virtual void SetTlsParms (const char *privkey_filename, const char *certchain_filename, bool verify_peer, int ssl_version, const char *cipherlist);
+		virtual void SetTlsHost(const char *hostname, const char *privkey_filename, const char *certchain_filename, const char *cipherlist);
 
 		#ifdef WITH_SSL
 		virtual X509 *GetPeerCert();
 		virtual bool VerifySslPeer(const char*);
 		virtual void AcceptSslPeer();
+		virtual const char *GetServerNameIndication();
 		#endif
 
 		void SetServerMode() {bIsServer = true;}
@@ -239,11 +243,14 @@ class ConnectionDescriptor: public EventableDescriptor
 		SslBox_t *SslBox;
 		std::string CertChainFilename;
 		std::string PrivateKeyFilename;
+		std::string ServerNameIndication;
 		bool bHandshakeSignaled;
 		bool bSslVerifyPeer;
                 int bSslVersion;
                 std::string CipherList;
 		bool bSslPeerAccepted;
+
+		std::map<string, std::map<string, string> > HostCertificates;
 		#endif
 
 		#ifdef HAVE_KQUEUE
