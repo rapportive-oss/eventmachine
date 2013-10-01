@@ -462,6 +462,17 @@ extern "C" void evma_set_tls_parms (const unsigned long binding, const char *pri
 		ed->SetTlsParms (privatekey_filename, certchain_filename, (verify_peer == 1 ? true : false), ssl_version, cipherlist);
 }
 
+/**********************
+evma_set_tls_host_cert
+**********************/
+extern "C" void evma_set_tls_host_cert (const unsigned long binding, const char *hostname, const char *privatekey_filename, const char *certchain_filename, const char *cipherlist)
+{
+	ensure_eventmachine("evma_set_tls_host_cert");
+	EventableDescriptor *ed = dynamic_cast <EventableDescriptor*> (Bindable_t::GetObject (binding));
+	if (ed)
+		ed->SetTlsHost (hostname, privatekey_filename, certchain_filename, cipherlist);
+}
+
 /******************
 evma_get_peer_cert
 ******************/
@@ -473,6 +484,21 @@ extern "C" X509 *evma_get_peer_cert (const unsigned long binding)
 	EventableDescriptor *ed = dynamic_cast <EventableDescriptor*> (Bindable_t::GetObject (binding));
 	if (ed)
 		return ed->GetPeerCert();
+	return NULL;
+}
+#endif
+
+/*******************************
+evma_get_server_name_indication
+*******************************/
+
+#ifdef WITH_SSL
+extern "C" const char *evma_get_server_name_indication (const unsigned long binding)
+{
+	ensure_eventmachine("evma_get_server_name_indication");
+	EventableDescriptor *ed = dynamic_cast <EventableDescriptor*> (Bindable_t::GetObject (binding));
+	if (ed)
+		return ed->GetServerNameIndication();
 	return NULL;
 }
 #endif
