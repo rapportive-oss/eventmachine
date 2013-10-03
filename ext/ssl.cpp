@@ -298,7 +298,7 @@ int SslBox_t::UpdateContextForHostname(const string &hostname)
 	// match, taking into account a global cert and prefix matches to handle wildcard SSL certs.
 	for (map<string, SslContext_t *>::iterator it = Contexts.begin(); it != Contexts.end(); ++it) {
 		string host_match = it->first;
-		if ((host_match.find("*") == 0 && !matchingContext) || hostname.find(host_match) != string::npos) {
+		if ((host_match == "*" && !matchingContext) || hostname.find(host_match) != string::npos) {
 			cout << "Will use certificate matching: [" << host_match << "] to satisfy [" << hostname << "]\n";
 			matchingContext = it->second;
 		}
@@ -323,15 +323,15 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 	pbioRead (NULL),
 	pbioWrite (NULL)
 {
-	SSL_CTX *firstContext = NULL;
+	SSL_CTX *defaultContext = NULL;
 
 	for (std::map<string, std::map<string, string> >::iterator it = hostcontexts.begin(); it != hostcontexts.end(); ++it) {
 		std::map<string, string> config = it->second;
 		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"],
 		                                         bSslVersion, config["cipherlist"]);
 		assert(context);
-		if (!firstContext) {
-			firstContext = context->pCtx;
+		if (!defaultContext) {
+			defaultContext = context->pCtx;
 		}
 		cout << "Setting Contexts value for key=" << it->first << "\n";
 		Contexts.insert(std::pair<string, SslContext_t *>(it->first, context));
@@ -342,14 +342,20 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 		SSL_CTX_set_tlsext_servername_arg(context->pCtx, this);
 	}
 
+	// Use a fallback configuration by default, otherwise use the first context by default
+	std::map<string, SslContext_t *>::iterator defaultCertConfig = Contexts.find("*");
+	if (defaultCertConfig != Contexts.end()) {
+		defaultContext = defaultCertConfig->second->pCtx;
+	}
+
 	pbioRead = BIO_new (BIO_s_mem());
 	assert (pbioRead);
 
 	pbioWrite = BIO_new (BIO_s_mem());
 	assert (pbioWrite);
 
-	assert(firstContext);
-	pSSL = SSL_new (firstContext);
+	assert(defaultContext);
+	pSSL = SSL_new (defaultContext);
 	assert (pSSL);
 	SSL_set_bio (pSSL, pbioRead, pbioWrite);
 
