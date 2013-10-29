@@ -191,7 +191,7 @@ SslContext_t::SslContext_t (bool is_server, const string &privkeyfile, const str
         if (cipherlist.length() > 0)
           SSL_CTX_set_cipher_list (pCtx, cipherlist.c_str());
         else
-          SSL_CTX_set_cipher_list (pCtx, "HIGH:!DES-CBC3-MD5:!RC2-CBC-MD5:!RC4-MD5:!RC4-MD5");
+          SSL_CTX_set_cipher_list (pCtx, "HIGH:!DES-CBC3-MD5:!RC2-CBC-MD5:!RC4-MD5:!RC4-MD5:!aNULL:!SSLv2");
 
 	if (is_server) {
 		SSL_CTX_sess_set_cache_size (pCtx, 128);
