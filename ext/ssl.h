@@ -33,7 +33,7 @@ class SslContext_t
 class SslContext_t
 {
 	public:
-		SslContext_t (bool is_server, const string &privkeyfile, const string &certchainfile, int ssl_version, const string &cipherlist);
+		SslContext_t (bool is_server, const string &privkeyfile, const string &certchainfile, const string &dhparamsfile, int ssl_version, const string &cipherlist);
 		virtual ~SslContext_t();
 
 	private:
@@ -45,6 +45,7 @@ class SslContext_t
 
 		EVP_PKEY *PrivateKey;
 		X509 *Certificate;
+		DH *DHParams;
 
 	friend class SslBox_t;
 };
@@ -57,7 +58,7 @@ class SslBox_t
 class SslBox_t
 {
 	public:
-		SslBox_t (bool is_server, const string &privkeyfile, const string &certchainfile, bool verify_peer, int ssl_version, const string &cipherlist, const unsigned long binding);
+		SslBox_t (bool is_server, const string &privkeyfile, const string &certchainfile, const string &dhparamsfile, bool verify_peer, int ssl_version, const string &cipherlist, const unsigned long binding);
 		SslBox_t (bool is_server, map<string, map<string, string> > hostcontexts, bool verify_peer, int ssl_version, const unsigned long binding);
 		virtual ~SslBox_t();
 

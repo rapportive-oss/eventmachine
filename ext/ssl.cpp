@@ -120,10 +120,11 @@ static void InitializeDefaultCredentials()
 SslContext_t::SslContext_t
 **************************/
 
-SslContext_t::SslContext_t (bool is_server, const string &privkeyfile, const string &certchainfile, int ssl_version, const string &cipherlist):
+SslContext_t::SslContext_t (bool is_server, const string &privkeyfile, const string &certchainfile, const string &dhparamsfile, int ssl_version, const string &cipherlist):
 	pCtx (NULL),
 	PrivateKey (NULL),
-	Certificate (NULL)
+	Certificate (NULL),
+	DHParams (NULL)
 {
 	/* TODO: the usage of the specified private-key and cert-chain filenames only applies to
 	 * client-side connections at this point. Server connections currently use the default materials.
@@ -164,7 +165,7 @@ SslContext_t::SslContext_t (bool is_server, const string &privkeyfile, const str
 	if (!pCtx)
 		throw std::runtime_error ("no SSL context");
 
-	SSL_CTX_set_options (pCtx, SSL_OP_ALL);
+	SSL_CTX_set_options (pCtx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_CIPHER_SERVER_PREFERENCE);
 	//SSL_CTX_set_options (pCtx, (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3));
 #ifdef SSL_MODE_RELEASE_BUFFERS
 	SSL_CTX_set_mode (pCtx, SSL_MODE_RELEASE_BUFFERS);
@@ -186,6 +187,22 @@ SslContext_t::SslContext_t (bool is_server, const string &privkeyfile, const str
 			e = SSL_CTX_use_certificate (pCtx, DefaultCertificate);
 		if (e <= 0) ERR_print_errors_fp(stderr);
 		assert (e > 0);
+
+		if (dhparamsfile.length() > 0) {
+			FILE *dhfile = fopen(dhparamsfile.c_str(), "r");
+			if (dhfile) {
+				DHParams = PEM_read_DHparams(dhfile, NULL, NULL, NULL);
+				if (DHParams) {
+					e = SSL_CTX_set_tmp_dh(pCtx, DHParams);
+					if (e <= 0) ERR_print_errors_fp(stderr);
+				} else {
+					ERR_print_errors_fp(stderr);
+				}
+				fclose(dhfile);
+			} else {
+				fprintf(stderr, "Cannot read dhparams file %s: %s\n", dhparamsfile.c_str(), strerror(errno));
+			}
+		}
 	}
 
         if (cipherlist.length() > 0)
@@ -226,6 +243,8 @@ SslContext_t::~SslContext_t()
 		EVP_PKEY_free (PrivateKey);
 	if (Certificate)
 		X509_free (Certificate);
+	if (DHParams)
+		DH_free (DHParams);
 }
 
 
@@ -234,7 +253,7 @@ SslContext_t::~SslContext_t()
 SslBox_t::SslBox_t
 ******************/
 
-SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &certchainfile, bool verify_peer, int ssl_version, const string &cipherlist, const unsigned long binding):
+SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &certchainfile, const string &dhparamsfile, bool verify_peer, int ssl_version, const string &cipherlist, const unsigned long binding):
 	bIsServer (is_server),
 	bHandshakeCompleted (false),
 	bVerifyPeer (verify_peer),
@@ -247,7 +266,7 @@ SslBox_t::SslBox_t (bool is_server, const string &privkeyfile, const string &cer
 	 * a new one every time we come here.
 	 */
 
-	Context = new SslContext_t (bIsServer, privkeyfile, certchainfile, ssl_version, cipherlist);
+	Context = new SslContext_t (bIsServer, privkeyfile, certchainfile, dhparamsfile, ssl_version, cipherlist);
 	assert (Context);
 
 	pbioRead = BIO_new (BIO_s_mem());
@@ -327,7 +346,7 @@ SslBox_t::SslBox_t (bool is_server, std::map<string, std::map<string, string> > 
 
 	for (std::map<string, std::map<string, string> >::iterator it = hostcontexts.begin(); it != hostcontexts.end(); ++it) {
 		std::map<string, string> config = it->second;
-		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"],
+		SslContext_t *context = new SslContext_t(bIsServer, config["privkey_filename"], config["certchain_filename"], config["dhparams_filename"],
 		                                         bSslVersion, config["cipherlist"]);
 		assert(context);
 		if (!defaultContext) {

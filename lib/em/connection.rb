@@ -421,7 +421,7 @@ module EventMachine
     #
     # @see #ssl_verify_peer
     def start_tls args={}
-      priv_key, cert_chain, verify_peer, ssl_version, cipher_list = args.values_at(:private_key_file, :cert_chain_file, :verify_peer, :ssl_version, :cipher_list)
+      priv_key, cert_chain, dhparams, verify_peer, ssl_version, cipher_list = args.values_at(:private_key_file, :cert_chain_file, :dhparams_file, :verify_peer, :ssl_version, :cipher_list)
 
       # Backward compatibility with version 1.1.3:
       ssl_version = :TLSv1  if args[:use_tls] and not ssl_version
@@ -445,7 +445,7 @@ module EventMachine
         end
       end
 
-      EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', verify_peer, ssl_version, cipher_list || '')
+      EventMachine::set_tls_parms(@signature, priv_key || '', cert_chain || '', dhparams || '', verify_peer, ssl_version, cipher_list || '')
       EventMachine::set_tls_hosts(@signature, hosts) if hosts.size > 0
       EventMachine::start_tls @signature
     end
