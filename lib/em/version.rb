@@ -1,4 +1,4 @@
 module EventMachine
-  VERSION = "1.1.5.rptv.5"
+  VERSION = "1.1.5.rptv.6"
 end
 
